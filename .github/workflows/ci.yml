@@ -1,0 +1,202 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+
+jobs:
+  check-rust:
+    strategy:
+      matrix:
+        os: [ubuntu, macos, windows]
+    runs-on: ${{ matrix.os }}-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: aarch64-apple-darwin, wasm32-unknown-unknown, x86_64-linux-android, x86_64-pc-windows-msvc, x86_64-unknown-linux-gnu
+      - run: make
+
+  check-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make check-js
+
+  generate-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+      - run: cargo binstall --no-confirm wasm-bindgen-cli
+      - uses: Homebrew/actions/setup-homebrew@master
+      - name: Install wasm-opt
+        run: brew update && brew install binaryen
+      - run: make build-wasm
+      - run: test -f site/generated/wgpu_game_of_life_bg.wasm
+      - run: rm site/generated/wgpu_game_of_life_bg.wasm
+      - run: make RELEASE=1 build-wasm
+      - run: test -f site/generated/wgpu_game_of_life_bg.wasm
+
+  deploy-site:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Permissions necessary for ${{ secrets.GITHUB_TOKEN }}
+    # to allow cloudflare/pages-action to create deployment:
+    # https://developers.cloudflare.com/pages/how-to/use-direct-upload-with-continuous-integration/
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Homebrew/actions/setup-homebrew@master
+      - name: Install wasm-opt
+        run: brew update && brew install binaryen
+      - run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+      - run: cargo binstall --no-confirm wasm-bindgen-cli
+      - run: make RELEASE=1 build-web
+      - name: Publish
+        uses: cloudflare/pages-action@1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_PAGES_EDIT_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: wgpu-game-of-life-fornwall-net
+          directory: site/dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+  build-android-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android x86_64-linux-android
+      - run: curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+      - run: cargo binstall --no-confirm cargo-ndk
+      - run: make build-android
+
+  build-ios-simulator-app:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - run: make build-ios-simulator-app
+
+  build-macos-app:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - run: make macos-app
+      - uses: actions/upload-artifact@v4
+        with:
+          path: target/x86_64-apple-darwin/release/bundle/osx/Game of Life.app.tar
+          name: wgpu-game-of-life.macos-x86-64
+      - uses: actions/upload-artifact@v4
+        with:
+          path: target/aarch64-apple-darwin/release/bundle/osx/Game of Life.app.tar
+          name: wgpu-game-of-life.macos-aarch64
+
+  build-windows-executable:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - run: cargo build --release
+      - uses: actions/upload-artifact@v4
+        with:
+          path: target/release/wgpu-game-of-life.exe
+          name: wgpu-game-of-life.windows-x86-64
+
+  build-linux-executable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - run: |
+          set -e
+          sudo apt-get update -y -qq
+          wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -
+          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
+          sudo apt-get update
+          sudo apt install -y libegl1-mesa libgl1-mesa-dri libxcb-xfixes0-dev vulkan-sdk
+      - run: cargo build --release
+      - uses: actions/upload-artifact@v4
+        with:
+          path: target/release/wgpu-game-of-life
+          name: wgpu-game-of-life.linux-x86-64
+
+  test-rust:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x86_64
+            os: windows-latest
+          - name: Linux x86_64
+            os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      - name: Show rust version
+        run: rustc --version
+      - name: install swiftshader
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          set -e
+          mkdir -p swiftshader
+          curl -LsSf https://github.com/gfx-rs/ci-build/releases/latest/download/swiftshader-linux-x86_64.tar.xz | tar -xf - -C swiftshader
+          echo "VK_ICD_FILENAMES=$PWD/swiftshader/vk_swiftshader_icd.json" >> "$GITHUB_ENV"
+      - name: install llvmpipe, vulkan sdk
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          set -e
+          sudo apt-get update -y -qq
+          # vulkan sdk
+          wget -qO - https://packages.lunarg.com/lunarg-signing-key-pub.asc | sudo apt-key add -
+          sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
+          sudo apt-get update
+          sudo apt install -y libegl1-mesa libgl1-mesa-dri libxcb-xfixes0-dev vulkan-sdk
+      - run: cargo test
+      - run: cargo bench
+
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download actionlint
+        id: get_actionlint
+        run: bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+      - name: Check workflow files
+        run: ${{ steps.get_actionlint.outputs.executable }} -color
