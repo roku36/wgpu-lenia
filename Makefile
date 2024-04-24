@@ -48,18 +48,6 @@ macos-app:
 	cd target/aarch64-apple-darwin/release/bundle/osx && tar cf "Game of Life.app.tar" "Game of Life.app"
 	cd target/x86_64-apple-darwin/release/bundle/osx && tar cf "Game of Life.app.tar" "Game of Life.app"
 
-build-android:
-	./gradlew $(GRADLE_BUILD_TASK)
-
-run-android:
-	./gradlew $(GRADLE_RUN_TASK)
-	adb shell am start -n net.fornwall.wgpugameoflife/android.app.NativeActivity
-	sleep 2
-	adb logcat -v color --pid=`adb shell pidof -s net.fornwall.wgpugameoflife`
-
-uninstall-android:
-	adb uninstall net.fornwall.wgpugameoflife
-
 run-app:
 	@cargo bundle --release &> /dev/null
 	@open target/release/bundle/osx/"$(APP_NAME)".app
