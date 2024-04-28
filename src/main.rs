@@ -1,7 +1,7 @@
 fn main() {
     #[cfg(not(any(target_os = "android", target_family = "wasm")))]
     {
-        use wgpu_game_of_life::State;
+        use wgpu_lenia::State;
         use winit::event_loop::ActiveEventLoop;
 
         pub async fn create_state(event_loop: &ActiveEventLoop) -> State {
@@ -25,7 +25,7 @@ fn main() {
                 };
 
                 if let Some(state) = &mut state {
-                    wgpu_game_of_life::event_loop::handle_event_loop(&event, state, event_loop);
+                    wgpu_lenia::event_loop::handle_event_loop(&event, state, event_loop);
                 }
             })
             .unwrap();

@@ -3,6 +3,7 @@ mod android;
 pub mod computer;
 pub mod event_loop;
 mod renderer;
+pub mod rules;
 #[cfg(target_family = "wasm")]
 mod web;
 
@@ -104,6 +105,12 @@ impl State {
         };
         let cells_height = cells_width;
 
+        let rule_idx = match rule_idx {
+            Some(idx) if idx < rules::RULES.len() as u32 => idx,
+            _ => 0,
+        };
+        let rule = &rules::RULES[rule_idx as usize];
+
         let seed = seed.unwrap_or(0);
 
         let initial_density = match initial_density {
@@ -121,6 +128,7 @@ impl State {
             &device,
             cells_width,
             cells_height,
+            rule,
             seed,
             initial_density,
             &queue,

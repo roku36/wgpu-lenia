@@ -28,6 +28,9 @@ winit = { git = "https://github.com/rust-windowing/winit/", features = [
     "wayland-dlopen",
 ], default-features = false }
 
+[target.'cfg(not(any(target_os = "android", target_family = "wasm")))'.dependencies]
+env_logger = "*"
+
 [dev-dependencies]
 criterion = { version = "*", default-features = false, features = [] }
 
