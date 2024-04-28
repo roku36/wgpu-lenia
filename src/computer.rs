@@ -1,5 +1,3 @@
-use crate::rules::Rule;
-
 pub struct ComputerFactory {
     shader: wgpu::ShaderModule,
     bind_group_layout: wgpu::BindGroupLayout,
@@ -84,7 +82,6 @@ impl ComputerFactory {
         device: &wgpu::Device,
         cells_width: u32,
         cells_height: u32,
-        rule: &Rule,
         seed: u32,
         initial_density: u8,
         queue: &wgpu::Queue,
