@@ -27,12 +27,6 @@ fn fragment_main(@location(0) cell: vec3<f32>) -> @location(0) vec4<f32> {
 fn spectral_bruton(w: f32) -> vec3<f32> {
     if w < 0.15 {
         return vec3<f32>(0.0, 1.0, -(w - 0.325) / (0.325 - 0.275));
-    } else if w >= 0.15 && w < 0.275 {
-        return vec3<f32>(0.0, 1.0, -(w - 0.325) / (0.325 - 0.275));
-    } else if w >= 0.275 && w < 0.325 {
-        return vec3<f32>(0.0, 1.0, -(w - 0.325) / (0.325 - 0.275));
-    } else if w >= 0.325 && w < 0.5 {
-        return vec3<f32>((w - 0.325) / (0.5 - 0.325), 1.0, 0.0);
     } else if w >= 0.5 {
         return vec3<f32>(1.0, -(w - 0.6625) / (0.6625 - 0.5), 0.0);
     } else {

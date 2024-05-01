@@ -1,11 +1,7 @@
-#[cfg(target_os = "android")]
-mod android;
 pub mod computer;
 pub mod event_loop;
 mod renderer;
 pub mod rules;
-#[cfg(target_family = "wasm")]
-mod web;
 
 use computer::{Computer, ComputerFactory};
 use renderer::{Renderer, RendererFactory};
@@ -219,17 +215,6 @@ impl State {
             self.seed,
             self.generations_per_second,
         ));
-
-        #[cfg(target_family = "wasm")]
-        web::set_new_state(
-            self.rule_idx,
-            self.cells_width,
-            self.seed,
-            self.initial_density,
-            self.paused,
-            self.generations_per_second,
-            if self.paused { self.frame_count } else { 0 },
-        );
     }
 
     fn reset_with_cells_width(&mut self, new_cells_width: u32, new_cells_height: u32) {

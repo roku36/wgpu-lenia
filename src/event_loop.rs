@@ -3,12 +3,7 @@ use winit::{
     event_loop::ActiveEventLoop,
 };
 
-#[cfg(target_family = "wasm")]
-use crate::web::CustomWinitEvent;
 use crate::State;
-
-#[cfg(target_family = "wasm")]
-type EventTypeUsed = crate::web::EventTypeUsed;
 
 #[cfg(not(target_family = "wasm"))]
 type EventTypeUsed = winit::event::Event<()>;
@@ -19,27 +14,6 @@ pub fn handle_event_loop(
     event_loop_window_target: &ActiveEventLoop,
 ) {
     match event {
-        #[cfg(target_family = "wasm")]
-        Event::UserEvent(event) => match event {
-            &CustomWinitEvent::RuleChange(new_rule_idx) => {
-                state.set_rule_idx(new_rule_idx);
-            }
-            &CustomWinitEvent::SizeChange(size) => {
-                state.reset_with_cells_width(size, size);
-            }
-            &CustomWinitEvent::SetDensity(new_density) => {
-                state.set_initial_density(new_density);
-            }
-            CustomWinitEvent::Reset => {
-                state.reset();
-            }
-            CustomWinitEvent::TogglePause => {
-                state.toggle_pause();
-            }
-            &CustomWinitEvent::SetGenerationsPerSecond(gps) => {
-                state.set_generations_per_second(gps);
-            }
-        },
         &Event::WindowEvent {
             ref event,
             window_id,
@@ -101,10 +75,6 @@ pub fn handle_event_loop(
                 ..
             } => {
                 if c == "f" || c == "F" {
-                    #[cfg(target_family = "wasm")]
-                    {
-                        crate::web::toggle_fullscreen();
-                    }
                     #[cfg(not(target_family = "wasm"))]
                     {
                         if state.window.fullscreen().is_some() {
@@ -115,12 +85,6 @@ pub fn handle_event_loop(
                                 .set_fullscreen(Some(winit::window::Fullscreen::Borderless(None)));
                         }
                     }
-                } else if c == "c" || c == "C" {
-                    #[cfg(target_family = "wasm")]
-                    crate::web::toggle_controls();
-                } else if c == "i" || c == "I" {
-                    #[cfg(target_family = "wasm")]
-                    crate::web::download_image();
                 } else if c == "r" || c == "R" {
                     state.reset();
                 } else if c == "q" || c == "Q" {
@@ -159,18 +123,6 @@ pub fn handle_event_loop(
                     },
                 ..
             } => event_loop_window_target.exit(),
-            #[cfg(target_family = "wasm")]
-            WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        logical_key: winit::keyboard::Key::Named(winit::keyboard::NamedKey::Tab),
-                        state: ElementState::Pressed,
-                        ..
-                    },
-                ..
-            } => {
-                crate::web::toggle_controls();
-            }
             WindowEvent::KeyboardInput {
                 event:
                     KeyEvent {
