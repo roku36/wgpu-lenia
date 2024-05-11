@@ -1,6 +1,3 @@
-#[cfg(target_family = "wasm")]
-use wasm_bindgen::prelude::*;
-
 #[derive(Clone, Copy)]
 #[cfg_attr(target_family = "wasm", wasm_bindgen)]
 pub struct Rule {
